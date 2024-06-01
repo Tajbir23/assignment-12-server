@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 const app = express();
 
 app.use(cors())
@@ -27,6 +28,11 @@ async function run() {
     const database = await client.db('diagnostic_center');
     const userCollection = database.collection('users');
 
+    app.post('/jwt', async (req, res) => {
+        const user = req.body
+        const token = jwt.sign(user, process.env.secret_token, {expiresIn: '24h'})
+        res.send(token)
+    })
 
     app.post('/signup', async (req, res) => {
         const user = req.body

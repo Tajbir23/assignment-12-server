@@ -31,7 +31,8 @@ async function run() {
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
-      const token = req.headers.Authorization.split(" ")[1];
+      const token = req.headers.authorization.split(' ')[1]
+      
       if (!token) {
         return res.status(401).send({ message: "unauthorize access denied" });
       }
@@ -68,9 +69,11 @@ async function run() {
 
     app.get('/admin/:email', verifyToken, async (req, res) => {
       const {email} = req.params;
+      
       if(email !== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
 
         const data = await userCollection.findOne({email: email})
+        
         res.send(data);
 
     })

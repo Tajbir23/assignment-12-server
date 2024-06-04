@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const app = express();
@@ -28,6 +28,7 @@ async function run() {
   try {
     const database = await client.db("diagnostic_center");
     const userCollection = database.collection("users");
+    const bannerCollection = database.collection("banner");
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
@@ -46,6 +47,22 @@ async function run() {
         next();
       });
     };
+
+    const verifyAdmin = async(req, res, next) => {
+      const email = req?.decoded?.email
+      
+      const query = {email: email}
+
+      const admin = await userCollection.findOne(query)
+
+      if(!admin){
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      if(admin.role!== 'admin') return res.status(403).send({ message: "forbidden access" });
+
+      next();
+    }
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -70,12 +87,48 @@ async function run() {
     app.get('/admin/:email', verifyToken, async (req, res) => {
       const {email} = req.params;
       
-      if(email !== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
+      // if(email !== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
 
         const data = await userCollection.findOne({email: email})
         
         res.send(data);
 
+    })
+
+    app.get('/user/:email', verifyToken, async (req, res) => {
+      const {email} = req.params;
+      
+      // if(email!== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
+        const data = await userCollection.findOne({email: email})
+        
+        res.send(data)
+        
+    })
+
+    app.post('/add_banner', verifyToken, verifyAdmin, async(req,res) => { 
+      const banner = req.body;
+      
+      const result = await bannerCollection.insertOne(banner)
+      res.send(result)
+    })
+
+    app.get('/banners',verifyToken, verifyAdmin, async(req,res) => {
+      const data = await bannerCollection.find({}).toArray()
+      res.send(data)
+    })
+
+    app.patch('/activate_banner',verifyToken, verifyAdmin, async(req,res) => {
+      const bannerId = req.body.bannerId;
+      console.log(bannerId)
+
+      await bannerCollection.updateMany({}, {$set: {isActive: false}});
+
+      const result = await bannerCollection.updateOne(
+        { _id: new ObjectId(bannerId) },
+        { $set: { isActive: true } }
+      );
+      console.log(result)
+      res.send(result);
     })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

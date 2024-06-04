@@ -119,14 +119,12 @@ async function run() {
       const pageSize = Number(pagination.pageSize) || 10;
       const totalData = (currentPage - 1) * pageSize
 
-      console.log(totalData)
       const data = await bannerCollection.find({}).skip(totalData).limit(pageSize).toArray()
       res.send(data)
     })
 
     app.patch('/activate_banner',verifyToken, verifyAdmin, async(req,res) => {
       const bannerId = req.body.bannerId;
-      console.log(bannerId)
 
       await bannerCollection.updateMany({}, {$set: {isActive: false}});
 
@@ -134,8 +132,14 @@ async function run() {
         { _id: new ObjectId(bannerId) },
         { $set: { isActive: true } }
       );
-      console.log(result)
+      
       res.send(result);
+    })
+
+    app.delete('/banner/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const {id} = req.params
+      const result = await bannerCollection.deleteOne({_id: new ObjectId(id)})
+      res.send(result)
     })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

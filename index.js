@@ -113,7 +113,14 @@ async function run() {
     })
 
     app.get('/banners',verifyToken, verifyAdmin, async(req,res) => {
-      const data = await bannerCollection.find({}).toArray()
+      const pagination = req.query
+
+      const currentPage = Number(pagination.currentPage) || 1;
+      const pageSize = Number(pagination.pageSize) || 10;
+      const totalData = (currentPage - 1) * pageSize
+
+      console.log(totalData)
+      const data = await bannerCollection.find({}).skip(totalData).limit(pageSize).toArray()
       res.send(data)
     })
 

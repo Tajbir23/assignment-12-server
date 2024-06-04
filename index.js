@@ -181,6 +181,7 @@ async function run() {
     app.post('/add_test', verifyToken, verifyAdmin, async (req, res) => {
       const test = req.body;
       const result = await testCollection.insertOne(test);
+      console.log(result)
       res.send(result);
     })
     // Connect the client to the server	(optional starting in v4.7)

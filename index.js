@@ -124,13 +124,14 @@ async function run() {
     })
 
     app.patch('/activate_banner',verifyToken, verifyAdmin, async(req,res) => {
-      const bannerId = req.body.bannerId;
+      const bannerId = req.body?.bannerId;
+      const isActive = req.body?.isActive
 
       await bannerCollection.updateMany({}, {$set: {isActive: false}});
 
       const result = await bannerCollection.updateOne(
         { _id: new ObjectId(bannerId) },
-        { $set: { isActive: true } }
+        { $set: { isActive: isActive } }
       );
       
       res.send(result);
@@ -141,6 +142,20 @@ async function run() {
       const result = await bannerCollection.deleteOne({_id: new ObjectId(id)})
       res.send(result)
     })
+
+    app.get('/banner', async (req, res) => {
+      const data = await bannerCollection.findOne({isActive: true})
+      res.send(data)
+    })
+
+    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+      const pagination = req.query
+      const currentPage = Number(pagination.currentPage) || 1;
+      const pageSize = Number(pagination.pageSize) || 10;
+      const totalData = (currentPage - 1) * pageSize
+      const data = await userCollection.find({}).skip(totalData).limit(pageSize).toArray()
+      res.send(data);
+    });
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

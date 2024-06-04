@@ -29,6 +29,7 @@ async function run() {
     const database = await client.db("diagnostic_center");
     const userCollection = database.collection("users");
     const bannerCollection = database.collection("banner");
+    const testCollection = database.collection("test");
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
@@ -156,6 +157,32 @@ async function run() {
       const data = await userCollection.find({}).skip(totalData).limit(pageSize).toArray()
       res.send(data);
     });
+
+    app.patch('/status_action',verifyToken, verifyAdmin, async (req, res) => {
+      const {status, id} = req.query;
+      
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: status } }
+      );
+      
+      res.send(result);
+    })
+
+    app.patch('/role_action', verifyToken, verifyAdmin, async(req, res) => {
+      const {role, id} = req.query;
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role: role } }
+      );
+      res.send(result);
+    })
+
+    app.post('/add_test', verifyToken, verifyAdmin, async (req, res) => {
+      const test = req.body;
+      const result = await testCollection.insertOne(test);
+      res.send(result);
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

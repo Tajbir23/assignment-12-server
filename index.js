@@ -4,6 +4,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const app = express();
+const stripe = require("stripe")(process.env.stripe_secret)
 
 app.use(cors());
 
@@ -30,6 +31,8 @@ async function run() {
     const userCollection = database.collection("users");
     const bannerCollection = database.collection("banner");
     const testCollection = database.collection("test");
+    const appointmentCollection = database.collection("appointment");
+
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
@@ -204,6 +207,45 @@ async function run() {
       const data = await testCollection.findOne({_id: new ObjectId(id)})
       res.send(data)
     })
+
+    app.post('/appointment', verifyToken, async (req, res) => {
+      const {date, email,name, serviceId, serviceTitle, serviceName, coupon, price} = req.body
+      let rate = 0
+
+      if(coupon){
+        const couponData = await bannerCollection.findOne({coupon : coupon, isActive : true})
+        if(couponData){
+          rate = Number(couponData.rate)
+        }
+      }
+
+      let discountedPrice = price
+
+      if(rate > 0){
+        discountedPrice = price - (price * rate / 100)
+      }
+
+      const result = await appointmentCollection.insertOne({date: date, price: discountedPrice, name: name, email: email, serviceId: serviceId, serviceTitle: serviceTitle, serviceName: serviceName, coupon: coupon, status: "pending"})
+
+      res.send(result)
+    })
+
+    app.post("/create-payment-intent",verifyToken,  async (req, res) => {
+      const {price} = req.body;
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: price,
+        currency: "usd",
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+    
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

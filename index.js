@@ -208,33 +208,76 @@ async function run() {
       res.send(data)
     })
 
+
+    app.post('/check-coupon', verifyToken, async (req, res) => {
+      const  {coupon}  = req.body;
+      const data = await bannerCollection.findOne({ coupon: coupon, isActive: true });
+      
+      if(!data){
+        return res.send({ message: "coupon not found" });
+      }
+      res.send(data);
+    }) 
+  
+
     app.post('/appointment', verifyToken, async (req, res) => {
-      const {date, email,name, serviceId, serviceTitle, serviceName, coupon, price} = req.body
-      let rate = 0
-
-      if(coupon){
-        const couponData = await bannerCollection.findOne({coupon : coupon, isActive : true})
-        if(couponData){
-          rate = Number(couponData.rate)
-        }
+      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price } = req.body;
+      let rate = 0;
+      
+      console.log(name)
+      try {
+          if (coupon) {
+              const couponData = await bannerCollection.findOne({ coupon: coupon, isActive: true });
+              if (couponData) {
+                  rate = Number(couponData.rate);
+              }
+          }
+ 
+          let discountedPrice = price;
+          if (rate > 0) {
+              discountedPrice = price - (price * rate / 100);
+          }
+  
+          const result = await appointmentCollection.insertOne({
+              date: date,
+              price: discountedPrice,
+              name: name,
+              email: email,
+              serviceId: serviceId,
+              serviceTitle: serviceTitle,
+              serviceName: serviceName,
+              coupon: coupon,
+              status: "pending"
+          });
+  
+          const updateQuery = { _id: new ObjectId(serviceId) };
+          const update = { $inc: { dataCount: 1, slot: -1 } };
+          await testCollection.updateOne(updateQuery, update);
+  
+          res.send(result);
+      } catch (error) {
+          res.status(500).send({ success: false, message: error.message });
       }
+  });
+  
 
-      let discountedPrice = price
-
-      if(rate > 0){
-        discountedPrice = price - (price * rate / 100)
-      }
-
-      const result = await appointmentCollection.insertOne({date: date, price: discountedPrice, name: name, email: email, serviceId: serviceId, serviceTitle: serviceTitle, serviceName: serviceName, coupon: coupon, status: "pending"})
-
-      res.send(result)
+    app.get('/my_appointments', verifyToken, async (req, res) => {
+      const data = await appointmentCollection.find({email: req?.decoded?.email}).toArray()
+      const total = await appointmentCollection.countDocuments()
+      res.send({data, total})
     })
 
+
     app.post("/create-payment-intent",verifyToken,  async (req, res) => {
-      const {price} = req.body;
+      const {price, discountedPrice} = req.body;
+      let discount = 0;
+
+      if(discountedPrice > 0){
+        discount = price - (price * discountedPrice / 100)
+      }
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: price,
+        amount: (discount ? discount * 100 : price * 100),
         currency: "usd",
         // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
         automatic_payment_methods: {

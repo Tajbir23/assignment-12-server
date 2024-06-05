@@ -198,6 +198,12 @@ async function run() {
       const data = await testCollection.find({date: {$gte: currentDate}}).skip(totalData).limit(pageSize).toArray();
       res.send({data, total});
     })
+
+    app.get('/test_details/:id', async (req, res) => {
+      const {id} = req.params;
+      const data = await testCollection.findOne({_id: new ObjectId(id)})
+      res.send(data)
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

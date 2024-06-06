@@ -215,16 +215,17 @@ async function run() {
       
       if(!data){
         return res.send({ message: "coupon not found" });
+      }else{
+        return res.send({ message: "Applied coupon" });
       }
-      res.send(data);
     }) 
   
 
     app.post('/appointment', verifyToken, async (req, res) => {
-      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price } = req.body;
+      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, time } = req.body;
       let rate = 0;
       
-      console.log(name)
+      console.log(time)
       try {
           if (coupon) {
               const couponData = await bannerCollection.findOne({ coupon: coupon, isActive: true });
@@ -247,6 +248,7 @@ async function run() {
               serviceTitle: serviceTitle,
               serviceName: serviceName,
               coupon: coupon,
+              time: time,
               status: "pending"
           });
   
@@ -269,7 +271,7 @@ async function run() {
 
 
     app.post("/create-payment-intent",verifyToken,  async (req, res) => {
-      const {price, discountedPrice} = req.body;
+      const {price, discountedPrice, serviceId} = req.body;
       let discount = 0;
 
       if(discountedPrice > 0){
@@ -284,6 +286,8 @@ async function run() {
           enabled: true,
         },
       });
+
+      await appointmentCollection.updateOne({_id: new ObjectId(serviceId)}, {$set: {price: discount ? discount : price, currency: "usd"}})
     
       res.send({
         clientSecret: paymentIntent.client_secret,

@@ -319,6 +319,18 @@ async function run() {
       const total = await testCollection.countDocuments()
       res.send({data, total})
     })
+
+    app.delete("/delete-test", verifyToken, verifyAdmin, async (req, res) => {
+      const {id} = req.query
+      const result = await testCollection.deleteOne({_id: new ObjectId(id)})
+      res.send(result)
+    })
+
+    app.patch('/update-test', verifyToken, verifyAdmin, async (req, res) => {
+      const {price, slot, id} = req.body;
+      const result = await testCollection.updateOne({_id: new ObjectId(id)}, {$set: {price: price, slot: slot}})
+      res.send(result)
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

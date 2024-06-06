@@ -310,6 +310,15 @@ async function run() {
       
       res.send(result)
     })
+
+    app.get("/dashboard-all-test", verifyToken, verifyAdmin, async (req, res) => {
+      const {current} = req.query
+      const pageSize = 10
+      const totalData = (current - 1) * pageSize;
+      const data = await testCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
+      const total = await testCollection.countDocuments()
+      res.send({data, total})
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

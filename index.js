@@ -32,7 +32,7 @@ async function run() {
     const bannerCollection = database.collection("banner");
     const testCollection = database.collection("test");
     const appointmentCollection = database.collection("appointment");
-
+    const cancelAppointmentCollection = database.collection("cancelAppointment");
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
@@ -216,7 +216,7 @@ async function run() {
       if(!data){
         return res.send({ message: "coupon not found" });
       }else{
-        return res.send({ message: "Applied coupon" });
+        return res.send({ message: "Applied coupon", rate: data?.rate }); 
       }
     }) 
   
@@ -224,8 +224,7 @@ async function run() {
     app.post('/appointment', verifyToken, async (req, res) => {
       const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, time } = req.body;
       let rate = 0;
-      
-      console.log(time)
+      const bookingTime = new Date().getTime()
       try {
           if (coupon) {
               const couponData = await bannerCollection.findOne({ coupon: coupon, isActive: true });
@@ -249,6 +248,7 @@ async function run() {
               serviceName: serviceName,
               coupon: coupon,
               time: time,
+              bookingTime: bookingTime,
               status: "pending"
           });
   
@@ -264,7 +264,11 @@ async function run() {
   
 
     app.get('/my_appointments', verifyToken, async (req, res) => {
-      const data = await appointmentCollection.find({email: req?.decoded?.email}).toArray()
+      const {current} = req.query
+      const pageSize = 10
+      const totalData = (current - 1) * pageSize;
+
+      const data = await appointmentCollection.find({email: req?.decoded?.email}).skip(totalData).limit(pageSize).toArray()
       const total = await appointmentCollection.countDocuments()
       res.send({data, total})
     })
@@ -277,9 +281,14 @@ async function run() {
       if(discountedPrice > 0){
         discount = price - (price * discountedPrice / 100)
       }
+
+      console.log(discountedPrice)
+      console.log(discount ? discount * 100 : price * 100)
+
+      const amount = Math.ceil(discount ? discount * 100 : price * 100)
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: (discount ? discount * 100 : price * 100),
+        amount: amount,
         currency: "usd",
         // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
         automatic_payment_methods: {
@@ -293,6 +302,14 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
+
+    app.post("/cancel-appointment", verifyToken, async (req, res) => {
+      const {_id, bookingTime, name, email, serviceId, serviceName, price} = req.body;
+      const result = await appointmentCollection.updateOne({_id: new ObjectId(_id)}, {$set: {status: "cancelled"}})
+      await cancelAppointmentCollection.insertOne({_id: new ObjectId(_id), status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: price})
+      
+      res.send(result)
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

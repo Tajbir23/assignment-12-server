@@ -125,7 +125,7 @@ async function run() {
 
       const total = await bannerCollection.countDocuments()
 
-      const data = await bannerCollection.find({}).skip(totalData).limit(pageSize).toArray()
+      const data = await bannerCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
       res.send({data, total})
     })
 
@@ -160,7 +160,7 @@ async function run() {
       const pageSize = Number(pagination.pageSize) || 10;
       const totalData = (currentPage - 1) * pageSize
       const total = await userCollection.countDocuments()
-      const data = await userCollection.find({}).skip(totalData).limit(pageSize).toArray()
+      const data = await userCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
       res.send({data, total});
     });
 
@@ -268,8 +268,8 @@ async function run() {
       const pageSize = 10
       const totalData = (current - 1) * pageSize;
 
-      const data = await appointmentCollection.find({email: req?.decoded?.email}).skip(totalData).limit(pageSize).toArray()
-      const total = await appointmentCollection.countDocuments()
+      const data = await appointmentCollection.find({email: req?.decoded?.email}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
+      const total = await appointmentCollection.countDocuments({email: req?.decoded?.email})
       res.send({data, total})
     })
 

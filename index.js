@@ -221,7 +221,7 @@ async function run() {
   
 
     app.post('/appointment', verifyToken, async (req, res) => {
-      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, time } = req.body;
+      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, withOutDiscount, time } = req.body;
       console.log(req.body)
       let rate = 0;
       const bookingTime = new Date().getTime()
@@ -240,7 +240,8 @@ async function run() {
   
           const result = await appointmentCollection.insertOne({
               date: date,
-              price: discountedPrice,
+              discount: Number(discountedPrice),
+              price: Number(withOutDiscount),
               name: name,
               email: email,
               serviceId: serviceId,
@@ -256,7 +257,6 @@ async function run() {
           const update = { $inc: { dataCount: 1, slot: -1 } };
           await testCollection.updateOne(updateQuery, update);
 
-          console.log(result)
           res.send(result);
       } catch (error) {
           res.status(500).send({ success: false, message: error.message });
@@ -335,17 +335,22 @@ async function run() {
     })
 
     app.get("/reservation/:id", verifyToken, verifyAdmin, async(req, res) => {
-      const {email} = req.query;
+      const {email, current} = req.query;
       const {id} = req.params;
+
+      const pageSize = 10
+      const totalData = (current - 1) * pageSize;
 
       let query = {serviceId: id}
 
       if(email){
-        query.email = email
+        query.email = { $regex: email, $options: 'i' };
       }
 
-      const result = await appointmentCollection.find(query).toArray()
-      res.send(result)
+      const result = await appointmentCollection.find(query).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
+      const total = await appointmentCollection.countDocuments(query)
+
+      res.send({result, total})
     })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

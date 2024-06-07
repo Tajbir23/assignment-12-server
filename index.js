@@ -36,7 +36,7 @@ async function run() {
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
-      const token = req.headers.authorization.split(' ')[1]
+      const token = req.headers?.authorization?.split(' ')[1]
       
       if (!token) {
         return res.status(401).send({ message: "unauthorize access denied" });
@@ -305,7 +305,8 @@ async function run() {
 
     app.post("/cancel-appointment", verifyToken, async (req, res) => {
       const {_id, bookingTime, name, email, serviceId, serviceName, price} = req.body;
-      const result = await appointmentCollection.updateOne({_id: new ObjectId(_id)}, {$set: {status: "cancelled"}})
+      const result = await appointmentCollection.deleteOne({_id: new ObjectId(_id)})
+
       await cancelAppointmentCollection.insertOne({_id: new ObjectId(_id), status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: price})
       
       res.send(result)
@@ -334,7 +335,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });
-    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!"); 
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();

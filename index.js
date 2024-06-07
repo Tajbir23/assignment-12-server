@@ -337,10 +337,14 @@ async function run() {
     app.get("/reservation/:id", verifyToken, verifyAdmin, async(req, res) => {
       const {email} = req.query;
       const {id} = req.params;
-      // console.log(id)
 
-      const result = await appointmentCollection.find({serviceId: id}).toArray()
-      console.log(result)
+      let query = {serviceId: id}
+
+      if(email){
+        query.email = email
+      }
+
+      const result = await appointmentCollection.find(query).toArray()
       res.send(result)
     })
     // Connect the client to the server	(optional starting in v4.7)

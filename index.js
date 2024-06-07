@@ -187,7 +187,6 @@ async function run() {
     app.post('/add_test', verifyToken, verifyAdmin, async (req, res) => {
       const test = req.body;
       const result = await testCollection.insertOne(test);
-      console.log(result)
       res.send(result);
     })
 
@@ -223,6 +222,7 @@ async function run() {
 
     app.post('/appointment', verifyToken, async (req, res) => {
       const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, time } = req.body;
+      console.log(req.body)
       let rate = 0;
       const bookingTime = new Date().getTime()
       try {
@@ -255,7 +255,8 @@ async function run() {
           const updateQuery = { _id: new ObjectId(serviceId) };
           const update = { $inc: { dataCount: 1, slot: -1 } };
           await testCollection.updateOne(updateQuery, update);
-  
+
+          console.log(result)
           res.send(result);
       } catch (error) {
           res.status(500).send({ success: false, message: error.message });
@@ -307,7 +308,7 @@ async function run() {
       const {_id, bookingTime, name, email, serviceId, serviceName, price} = req.body;
       const result = await appointmentCollection.deleteOne({_id: new ObjectId(_id)})
 
-      await cancelAppointmentCollection.insertOne({_id: new ObjectId(_id), status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: price})
+      await cancelAppointmentCollection.insertOne({appointmentId: _id, status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: price})
       
       res.send(result)
     })
@@ -330,6 +331,16 @@ async function run() {
     app.patch('/update-test', verifyToken, verifyAdmin, async (req, res) => {
       const {price, slot, id} = req.body;
       const result = await testCollection.updateOne({_id: new ObjectId(id)}, {$set: {price: price, slot: slot}})
+      res.send(result)
+    })
+
+    app.get("/reservation/:id", verifyToken, verifyAdmin, async(req, res) => {
+      const {email} = req.query;
+      const {id} = req.params;
+      // console.log(id)
+
+      const result = await appointmentCollection.find({serviceId: id}).toArray()
+      console.log(result)
       res.send(result)
     })
     // Connect the client to the server	(optional starting in v4.7)

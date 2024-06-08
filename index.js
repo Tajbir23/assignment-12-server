@@ -101,7 +101,6 @@ async function run() {
 
     app.get('/user/:email', verifyToken, async (req, res) => {
       const {email} = req.params;
-      
       // if(email!== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
         const data = await userCollection.findOne({email: email})
         
@@ -392,6 +391,15 @@ async function run() {
       const total = await appointmentCollection.countDocuments()
       res.send({data, total})
     })
+
+    app.get('/user-test-report/:email', verifyToken, verifyAdmin, async (req, res) => {
+      const {email} = req.params;
+      const data = await appointmentCollection.find({email: email}).sort({_id: -1}).toArray();
+      console.log(data)
+      res.send(data)
+    })
+
+    
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

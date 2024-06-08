@@ -352,6 +352,21 @@ async function run() {
 
       res.send({result, total})
     })
+
+    app.post('/cancel-reservation', verifyToken, verifyAdmin, async(req, res) => {
+      const {_id, bookingTime, name, email, serviceId, serviceName, price, discount} = req.body;
+      const result = await appointmentCollection.deleteOne({_id: new ObjectId(_id)})
+
+      await cancelAppointmentCollection.insertOne({appointmentId: _id, status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: discount || price})
+
+      res.send(result)
+    })
+
+    app.patch("/update-reservation", verifyToken, verifyAdmin, async(req, res)=> {
+      const {id, link} = req.body;
+      const result = await appointmentCollection.updateOne({_id: new ObjectId(id)}, {$set: {status: 'delivered', link: link}})
+      res.send(result)
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

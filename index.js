@@ -191,15 +191,31 @@ async function run() {
     })
 
     app.get('/all_tests', async (req, res) => {
-      const {currentPage} = req.query;
+      const { currentPage = 1, filter } = req.query;
       const pageSize = 6;
       const totalData = (currentPage - 1) * pageSize;
-      const total = await testCollection.countDocuments();
-      // const data = await testCollection.find({}).skip(totalData).limit(pageSize).toArray();
       const currentDate = new Date().getTime();
-      const data = await testCollection.find({date: {$gte: currentDate}}).skip(totalData).limit(pageSize).toArray();
-      res.send({data, total});
-    })
+  
+      try {
+          const total = await testCollection.countDocuments();
+          
+          // Construct the filter for the date
+          let query = { date: { $gte: currentDate } };
+          if(filter !== undefined){
+            const filterDate = Number(filter)
+            if(!isNaN(filterDate)){
+              query.date.$eq = filterDate
+            }
+          }
+  
+          const data = await testCollection.find(query).skip(totalData).limit(pageSize).toArray();
+          
+          res.send({ data, total });
+      } catch (error) {
+          res.status(500).send({ error: 'An error occurred while fetching the data' });
+      }
+  });
+  
 
     app.get('/test_details/:id', async (req, res) => {
       const {id} = req.params;
@@ -366,6 +382,15 @@ async function run() {
       const {id, link} = req.body;
       const result = await appointmentCollection.updateOne({_id: new ObjectId(id)}, {$set: {status: 'delivered', link: link}})
       res.send(result)
+    })
+
+    app.get('/test-results', verifyToken, async (req, res) => {
+      const {current} = req.query || 1
+      const pageSize = 10
+      const totalData = (current - 1) * pageSize;
+      const data = await appointmentCollection.find({email: req.decoded.email, status: 'delivered'}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
+      const total = await appointmentCollection.countDocuments()
+      res.send({data, total})
     })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

@@ -520,14 +520,26 @@ async function run() {
       }
     );
 
-    app.get("/statistics", verifyToken, verifyAdmin, async (req, res) => {
-      const mostlyBooked = await testCollection
+
+    const mostlyBooked = async(req, res, next) => {
+      const mostlyBookedData = await testCollection
         .aggregate([
           { $sort: { dataCount: -1 } },
           { $limit: 10 },
-          { $project: { name: 1, booking: "$dataCount", _id: 0 } },
+          {$addFields: {booking: "$dataCount"}},
+          {$unset: "dataCount"}
         ])
         .toArray();
+        req.mostlyBooked = mostlyBookedData
+        
+        next();
+    }
+
+
+    app.get("/statistics", verifyToken, verifyAdmin, mostlyBooked, async (req, res) => {
+      
+      const mostlyBookedData = req.mostlyBooked
+      console.log(mostlyBookedData)
 
       const Complete = await appointmentCollection.countDocuments({
         status: "delivered",
@@ -537,7 +549,7 @@ async function run() {
       });
 
       const data = {
-        mostlyBooked,
+        mostlyBooked : mostlyBookedData,
         status: [
           {name: "Completed", value: Complete},
           {name: 'Pending', value: Pending},
@@ -545,6 +557,11 @@ async function run() {
       };
       res.send(data);
     });
+
+    app.get('/featured-test', mostlyBooked, async (req, res) => {
+      const {mostlyBooked} = req
+      res.send(mostlyBooked)
+    })
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

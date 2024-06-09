@@ -4,7 +4,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const app = express();
-const stripe = require("stripe")(process.env.stripe_secret)
+const stripe = require("stripe")(process.env.stripe_secret);
 
 app.use(cors());
 
@@ -32,12 +32,13 @@ async function run() {
     const bannerCollection = database.collection("banner");
     const testCollection = database.collection("test");
     const appointmentCollection = database.collection("appointment");
-    const cancelAppointmentCollection = database.collection("cancelAppointment");
+    const cancelAppointmentCollection =
+      database.collection("cancelAppointment");
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
-      const token = req.headers?.authorization?.split(' ')[1]
-      
+      const token = req.headers?.authorization?.split(" ")[1];
+
       if (!token) {
         return res.status(401).send({ message: "unauthorize access denied" });
       }
@@ -52,21 +53,22 @@ async function run() {
       });
     };
 
-    const verifyAdmin = async(req, res, next) => {
-      const email = req?.decoded?.email
-      
-      const query = {email: email}
+    const verifyAdmin = async (req, res, next) => {
+      const email = req?.decoded?.email;
 
-      const admin = await userCollection.findOne(query)
+      const query = { email: email };
 
-      if(!admin){
+      const admin = await userCollection.findOne(query);
+
+      if (!admin) {
         return res.status(403).send({ message: "forbidden access" });
       }
 
-      if(admin.role!== 'admin') return res.status(403).send({ message: "forbidden access" });
+      if (admin.role !== "admin")
+        return res.status(403).send({ message: "forbidden access" });
 
       next();
-    }
+    };
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -88,220 +90,260 @@ async function run() {
       res.send(data);
     });
 
-    app.get('/admin/:email', verifyToken, async (req, res) => {
-      const {email} = req.params;
-      
+    app.get("/admin/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+
       // if(email !== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
 
-        const data = await userCollection.findOne({email: email})
-        
-        res.send(data);
+      const data = await userCollection.findOne({ email: email });
 
-    })
-
-    app.get('/user/:email', verifyToken, async (req, res) => {
-      const {email} = req.params;
-      // if(email!== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
-        const data = await userCollection.findOne({email: email})
-        
-        res.send(data)
-        
-    })
-
-    app.post('/add_banner', verifyToken, verifyAdmin, async(req,res) => { 
-      const banner = req.body;
-      
-      const result = await bannerCollection.insertOne(banner)
-      res.send(result)
-    })
-
-    app.get('/banners',verifyToken, verifyAdmin, async(req,res) => {
-      const pagination = req.query
-
-      const currentPage = Number(pagination.currentPage) || 1;
-      const pageSize = Number(pagination.pageSize) || 10;
-      const totalData = (currentPage - 1) * pageSize
-
-      const total = await bannerCollection.countDocuments()
-
-      const data = await bannerCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
-      res.send({data, total})
-    })
-
-    app.patch('/activate_banner',verifyToken, verifyAdmin, async(req,res) => {
-      const bannerId = req.body?.bannerId;
-      const isActive = req.body?.isActive
-
-      await bannerCollection.updateMany({}, {$set: {isActive: false}});
-
-      const result = await bannerCollection.updateOne(
-        { _id: new ObjectId(bannerId) },
-        { $set: { isActive: isActive } }
-      );
-      
-      res.send(result);
-    })
-
-    app.delete('/banner/:id', verifyToken, verifyAdmin, async (req, res) => {
-      const {id} = req.params
-      const result = await bannerCollection.deleteOne({_id: new ObjectId(id)})
-      res.send(result)
-    })
-
-    app.get('/banner', async (req, res) => {
-      const data = await bannerCollection.findOne({isActive: true})
-      res.send(data)
-    })
-
-    app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
-      const pagination = req.query
-      const currentPage = Number(pagination.currentPage) || 1;
-      const pageSize = Number(pagination.pageSize) || 10;
-      const totalData = (currentPage - 1) * pageSize
-      const total = await userCollection.countDocuments()
-      const data = await userCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
-      res.send({data, total});
+      res.send(data);
     });
 
-    app.patch('/status_action',verifyToken, verifyAdmin, async (req, res) => {
-      const {status, id} = req.query;
-      
+    app.get("/user/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      // if(email!== req?.decoded?.email) return res.status(403).send({message: 'forbidden access'})
+      const data = await userCollection.findOne({ email: email });
+
+      res.send(data);
+    });
+
+    app.post("/add_banner", verifyToken, verifyAdmin, async (req, res) => {
+      const banner = req.body;
+
+      const result = await bannerCollection.insertOne(banner);
+      res.send(result);
+    });
+
+    app.get("/banners", verifyToken, verifyAdmin, async (req, res) => {
+      const pagination = req.query;
+
+      const currentPage = Number(pagination.currentPage) || 1;
+      const pageSize = Number(pagination.pageSize) || 10;
+      const totalData = (currentPage - 1) * pageSize;
+
+      const total = await bannerCollection.countDocuments();
+
+      const data = await bannerCollection
+        .find({})
+        .sort({ _id: -1 })
+        .skip(totalData)
+        .limit(pageSize)
+        .toArray();
+      res.send({ data, total });
+    });
+
+    app.patch(
+      "/activate_banner",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const bannerId = req.body?.bannerId;
+        const isActive = req.body?.isActive;
+
+        await bannerCollection.updateMany({}, { $set: { isActive: false } });
+
+        const result = await bannerCollection.updateOne(
+          { _id: new ObjectId(bannerId) },
+          { $set: { isActive: isActive } }
+        );
+
+        res.send(result);
+      }
+    );
+
+    app.delete("/banner/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const { id } = req.params;
+      const result = await bannerCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+    app.get("/banner", async (req, res) => {
+      const data = await bannerCollection.findOne({ isActive: true });
+      res.send(data);
+    });
+
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      const pagination = req.query;
+      const currentPage = Number(pagination.currentPage) || 1;
+      const pageSize = Number(pagination.pageSize) || 10;
+      const totalData = (currentPage - 1) * pageSize;
+      const total = await userCollection.countDocuments();
+      const data = await userCollection
+        .find({})
+        .sort({ _id: -1 })
+        .skip(totalData)
+        .limit(pageSize)
+        .toArray();
+      res.send({ data, total });
+    });
+
+    app.patch("/status_action", verifyToken, verifyAdmin, async (req, res) => {
+      const { status, id } = req.query;
+
       const result = await userCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { status: status } }
       );
-      
-      res.send(result);
-    })
 
-    app.patch('/role_action', verifyToken, verifyAdmin, async(req, res) => {
-      const {role, id} = req.query;
+      res.send(result);
+    });
+
+    app.patch("/role_action", verifyToken, verifyAdmin, async (req, res) => {
+      const { role, id } = req.query;
       const result = await userCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { role: role } }
       );
       res.send(result);
-    })
+    });
 
-    app.post('/add_test', verifyToken, verifyAdmin, async (req, res) => {
+    app.post("/add_test", verifyToken, verifyAdmin, async (req, res) => {
       const test = req.body;
       const result = await testCollection.insertOne(test);
       res.send(result);
-    })
+    });
 
-    app.get('/all_tests', async (req, res) => {
+    app.get("/all_tests", async (req, res) => {
       const { currentPage = 1, filter } = req.query;
       const pageSize = 6;
       const totalData = (currentPage - 1) * pageSize;
       const currentDate = new Date().getTime();
-  
+
       try {
-          const total = await testCollection.countDocuments();
-          
-          // Construct the filter for the date
-          let query = { date: { $gte: currentDate } };
-          if(filter !== undefined){
-            const filterDate = Number(filter)
-            if(!isNaN(filterDate)){
-              query.date.$eq = filterDate
-            }
+        const total = await testCollection.countDocuments();
+
+        // Construct the filter for the date
+        let query = { date: { $gte: currentDate } };
+        if (filter !== undefined) {
+          const filterDate = Number(filter);
+          if (!isNaN(filterDate)) {
+            query.date.$eq = filterDate;
           }
-  
-          const data = await testCollection.find(query).skip(totalData).limit(pageSize).toArray();
-          
-          res.send({ data, total });
+        }
+
+        const data = await testCollection
+          .find(query)
+          .skip(totalData)
+          .limit(pageSize)
+          .toArray();
+
+        res.send({ data, total });
       } catch (error) {
-          res.status(500).send({ error: 'An error occurred while fetching the data' });
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching the data" });
       }
-  });
-  
+    });
 
-    app.get('/test_details/:id', async (req, res) => {
-      const {id} = req.params;
-      const data = await testCollection.findOne({_id: new ObjectId(id)})
-      res.send(data)
-    })
+    app.get("/test_details/:id", async (req, res) => {
+      const { id } = req.params;
+      const data = await testCollection.findOne({ _id: new ObjectId(id) });
+      res.send(data);
+    });
 
+    app.post("/check-coupon", verifyToken, async (req, res) => {
+      const { coupon } = req.body;
+      const data = await bannerCollection.findOne({
+        coupon: coupon,
+        isActive: true,
+      });
 
-    app.post('/check-coupon', verifyToken, async (req, res) => {
-      const  {coupon}  = req.body;
-      const data = await bannerCollection.findOne({ coupon: coupon, isActive: true });
-      
-      if(!data){
+      if (!data) {
         return res.send({ message: "coupon not found" });
-      }else{
-        return res.send({ message: "Applied coupon", rate: data?.rate }); 
+      } else {
+        return res.send({ message: "Applied coupon", rate: data?.rate });
       }
-    }) 
-  
+    });
 
-    app.post('/appointment', verifyToken, async (req, res) => {
-      const { date, email, name, serviceId, serviceTitle, serviceName, coupon, price, withOutDiscount, time } = req.body;
-      console.log(req.body)
+    app.post("/appointment", verifyToken, async (req, res) => {
+      const {
+        date,
+        email,
+        name,
+        serviceId,
+        serviceTitle,
+        serviceName,
+        coupon,
+        price,
+        withOutDiscount,
+        time,
+      } = req.body;
+      console.log(req.body);
       let rate = 0;
-      const bookingTime = new Date().getTime()
+      const bookingTime = new Date().getTime();
       try {
-          if (coupon) {
-              const couponData = await bannerCollection.findOne({ coupon: coupon, isActive: true });
-              if (couponData) {
-                  rate = Number(couponData.rate);
-              }
-          }
- 
-          let discountedPrice = price;
-          if (rate > 0) {
-              discountedPrice = price - (price * rate / 100);
-          }
-  
-          const result = await appointmentCollection.insertOne({
-              date: date,
-              discount: Number(discountedPrice),
-              price: Number(withOutDiscount),
-              name: name,
-              email: email,
-              serviceId: serviceId,
-              serviceTitle: serviceTitle,
-              serviceName: serviceName,
-              coupon: coupon,
-              time: time,
-              bookingTime: bookingTime,
-              status: "pending"
+        if (coupon) {
+          const couponData = await bannerCollection.findOne({
+            coupon: coupon,
+            isActive: true,
           });
-  
-          const updateQuery = { _id: new ObjectId(serviceId) };
-          const update = { $inc: { dataCount: 1, slot: -1 } };
-          await testCollection.updateOne(updateQuery, update);
+          if (couponData) {
+            rate = Number(couponData.rate);
+          }
+        }
 
-          res.send(result);
+        let discountedPrice = price;
+        if (rate > 0) {
+          discountedPrice = price - (price * rate) / 100;
+        }
+
+        const result = await appointmentCollection.insertOne({
+          date: date,
+          discount: Number(discountedPrice),
+          price: Number(withOutDiscount),
+          name: name,
+          email: email,
+          serviceId: serviceId,
+          serviceTitle: serviceTitle,
+          serviceName: serviceName,
+          coupon: coupon,
+          time: time,
+          bookingTime: bookingTime,
+          status: "pending",
+        });
+
+        const updateQuery = { _id: new ObjectId(serviceId) };
+        const update = { $inc: { dataCount: 1, slot: -1 } };
+        await testCollection.updateOne(updateQuery, update);
+
+        res.send(result);
       } catch (error) {
-          res.status(500).send({ success: false, message: error.message });
+        res.status(500).send({ success: false, message: error.message });
       }
-  });
-  
+    });
 
-    app.get('/my_appointments', verifyToken, async (req, res) => {
-      const {current} = req.query
-      const pageSize = 10
+    app.get("/my_appointments", verifyToken, async (req, res) => {
+      const { current } = req.query;
+      const pageSize = 10;
       const totalData = (current - 1) * pageSize;
 
-      const data = await appointmentCollection.find({email: req?.decoded?.email}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray()
-      const total = await appointmentCollection.countDocuments({email: req?.decoded?.email})
-      res.send({data, total})
-    })
+      const data = await appointmentCollection
+        .find({ email: req?.decoded?.email })
+        .sort({ _id: -1 })
+        .skip(totalData)
+        .limit(pageSize)
+        .toArray();
+      const total = await appointmentCollection.countDocuments({
+        email: req?.decoded?.email,
+      });
+      res.send({ data, total });
+    });
 
-
-    app.post("/create-payment-intent",verifyToken,  async (req, res) => {
-      const {price, discountedPrice, serviceId} = req.body;
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price, discountedPrice, serviceId } = req.body;
       let discount = 0;
 
-      if(discountedPrice > 0){
-        discount = price - (price * discountedPrice / 100)
+      if (discountedPrice > 0) {
+        discount = price - (price * discountedPrice) / 100;
       }
 
-      console.log(discountedPrice)
-      console.log(discount ? discount * 100 : price * 100)
+      console.log(discountedPrice);
+      console.log(discount ? discount * 100 : price * 100);
 
-      const amount = Math.ceil(discount ? discount * 100 : price * 100)
+      const amount = Math.ceil(discount ? discount * 100 : price * 100);
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -312,98 +354,202 @@ async function run() {
         },
       });
 
-      await appointmentCollection.updateOne({_id: new ObjectId(serviceId)}, {$set: {price: discount ? discount : price, currency: "usd"}})
-    
+      await appointmentCollection.updateOne(
+        { _id: new ObjectId(serviceId) },
+        { $set: { price: discount ? discount : price, currency: "usd" } }
+      );
+
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
     });
 
     app.post("/cancel-appointment", verifyToken, async (req, res) => {
-      const {_id, bookingTime, name, email, serviceId, serviceName, price} = req.body;
-      const result = await appointmentCollection.deleteOne({_id: new ObjectId(_id)})
+      const { _id, bookingTime, name, email, serviceId, serviceName, price } =
+        req.body;
+      const result = await appointmentCollection.deleteOne({
+        _id: new ObjectId(_id),
+      });
 
-      await cancelAppointmentCollection.insertOne({appointmentId: _id, status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: price})
-      
-      res.send(result)
-    })
+      await cancelAppointmentCollection.insertOne({
+        appointmentId: _id,
+        status: "refund pending",
+        name: name,
+        serviceId: serviceId,
+        bookingTime: bookingTime,
+        email: email,
+        serviceName: serviceName,
+        price: price,
+      });
 
-    app.get("/dashboard-all-test", verifyToken, verifyAdmin, async (req, res) => {
-      const {current} = req.query
-      const pageSize = 10
-      const totalData = (current - 1) * pageSize;
-      const data = await testCollection.find({}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
-      const total = await testCollection.countDocuments()
-      res.send({data, total})
-    })
+      res.send(result);
+    });
+
+    app.get(
+      "/dashboard-all-test",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { current } = req.query;
+        const pageSize = 10;
+        const totalData = (current - 1) * pageSize;
+        const data = await testCollection
+          .find({})
+          .sort({ _id: -1 })
+          .skip(totalData)
+          .limit(pageSize)
+          .toArray();
+        const total = await testCollection.countDocuments();
+        res.send({ data, total });
+      }
+    );
 
     app.delete("/delete-test", verifyToken, verifyAdmin, async (req, res) => {
-      const {id} = req.query
-      const result = await testCollection.deleteOne({_id: new ObjectId(id)})
-      res.send(result)
-    })
+      const { id } = req.query;
+      const result = await testCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
-    app.patch('/update-test', verifyToken, verifyAdmin, async (req, res) => {
-      const {price, slot, id} = req.body;
-      const result = await testCollection.updateOne({_id: new ObjectId(id)}, {$set: {price: price, slot: slot}})
-      res.send(result)
-    })
+    app.patch("/update-test", verifyToken, verifyAdmin, async (req, res) => {
+      const { price, slot, id } = req.body;
+      const result = await testCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { price: price, slot: slot } }
+      );
+      res.send(result);
+    });
 
-    app.get("/reservation/:id", verifyToken, verifyAdmin, async(req, res) => {
-      const {email, current} = req.query;
-      const {id} = req.params;
+    app.get("/reservation/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const { email, current } = req.query;
+      const { id } = req.params;
 
-      const pageSize = 10
+      const pageSize = 10;
       const totalData = (current - 1) * pageSize;
 
-      let query = {serviceId: id}
+      let query = { serviceId: id };
 
-      if(email){
-        query.email = { $regex: email, $options: 'i' };
+      if (email) {
+        query.email = { $regex: email, $options: "i" };
       }
 
-      const result = await appointmentCollection.find(query).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
-      const total = await appointmentCollection.countDocuments(query)
+      const result = await appointmentCollection
+        .find(query)
+        .sort({ _id: -1 })
+        .skip(totalData)
+        .limit(pageSize)
+        .toArray();
+      const total = await appointmentCollection.countDocuments(query);
 
-      res.send({result, total})
-    })
+      res.send({ result, total });
+    });
 
-    app.post('/cancel-reservation', verifyToken, verifyAdmin, async(req, res) => {
-      const {_id, bookingTime, name, email, serviceId, serviceName, price, discount} = req.body;
-      const result = await appointmentCollection.deleteOne({_id: new ObjectId(_id)})
+    app.post(
+      "/cancel-reservation",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const {
+          _id,
+          bookingTime,
+          name,
+          email,
+          serviceId,
+          serviceName,
+          price,
+          discount,
+        } = req.body;
+        const result = await appointmentCollection.deleteOne({
+          _id: new ObjectId(_id),
+        });
 
-      await cancelAppointmentCollection.insertOne({appointmentId: _id, status: "refund pending", name: name, serviceId: serviceId, bookingTime: bookingTime, email: email, serviceName: serviceName, price: discount || price})
+        await cancelAppointmentCollection.insertOne({
+          appointmentId: _id,
+          status: "refund pending",
+          name: name,
+          serviceId: serviceId,
+          bookingTime: bookingTime,
+          email: email,
+          serviceName: serviceName,
+          price: discount || price,
+        });
 
-      res.send(result)
-    })
+        res.send(result);
+      }
+    );
 
-    app.patch("/update-reservation", verifyToken, verifyAdmin, async(req, res)=> {
-      const {id, link} = req.body;
-      const result = await appointmentCollection.updateOne({_id: new ObjectId(id)}, {$set: {status: 'delivered', link: link}})
-      res.send(result)
-    })
+    app.patch(
+      "/update-reservation",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id, link } = req.body;
+        const result = await appointmentCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: "delivered", link: link } }
+        );
+        res.send(result);
+      }
+    );
 
-    app.get('/test-results', verifyToken, async (req, res) => {
-      const {current} = req.query || 1
-      const pageSize = 10
+    app.get("/test-results", verifyToken, async (req, res) => {
+      const { current } = req.query || 1;
+      const pageSize = 10;
       const totalData = (current - 1) * pageSize;
-      const data = await appointmentCollection.find({email: req.decoded.email, status: 'delivered'}).sort({_id: -1}).skip(totalData).limit(pageSize).toArray();
-      const total = await appointmentCollection.countDocuments()
-      res.send({data, total})
-    })
+      const data = await appointmentCollection
+        .find({ email: req.decoded.email, status: "delivered" })
+        .sort({ _id: -1 })
+        .skip(totalData)
+        .limit(pageSize)
+        .toArray();
+      const total = await appointmentCollection.countDocuments();
+      res.send({ data, total });
+    });
 
-    app.get('/user-test-report/:email', verifyToken, verifyAdmin, async (req, res) => {
-      const {email} = req.params;
-      const data = await appointmentCollection.find({email: email}).sort({_id: -1}).toArray();
-      console.log(data)
-      res.send(data)
-    })
+    app.get(
+      "/user-test-report/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { email } = req.params;
+        const data = await appointmentCollection
+          .find({ email: email })
+          .sort({ _id: -1 })
+          .toArray();
 
-    
+        res.send(data);
+      }
+    );
+
+    app.get("/statistics", verifyToken, verifyAdmin, async (req, res) => {
+      const mostlyBooked = await testCollection
+        .aggregate([
+          { $sort: { dataCount: -1 } },
+          { $limit: 10 },
+          { $project: { name: 1, booking: "$dataCount", _id: 0 } },
+        ])
+        .toArray();
+
+      const Complete = await appointmentCollection.countDocuments({
+        status: "delivered",
+      });
+      const Pending = await appointmentCollection.countDocuments({
+        status: "pending",
+      });
+
+      const data = {
+        mostlyBooked,
+        status: [
+          {name: "Completed", value: Complete},
+          {name: 'Pending', value: Pending},
+        ],
+      };
+      res.send(data);
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });
-    // console.log("Pinged your deployment. You successfully connected to MongoDB!"); 
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();

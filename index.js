@@ -563,6 +563,12 @@ async function run() {
       res.send(mostlyBooked)
     })
 
+    app.get('/profile', verifyToken, async (req, res) => {
+      const {email} = req?.decoded
+      const data = await userCollection.findOne({email})
+      res.send(data)
+    })
+
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

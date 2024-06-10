@@ -222,7 +222,7 @@ async function run() {
       const { currentPage = 1, filter } = req.query;
       const pageSize = 6;
       const totalData = (currentPage - 1) * pageSize;
-      const currentDate = new Date().setHours(0,0,0,0).getTime();
+      const currentDate = new Date().getTime();
 
       try {
         const total = await testCollection.countDocuments();

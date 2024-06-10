@@ -6,7 +6,15 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const stripe = require("stripe")(process.env.stripe_secret);
 
-app.use(cors());
+//Must remove "/" from your production URL
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://assignment12.tajbirideas.com"
+    ]
+  })
+);
 
 app.use(express.json());
 
@@ -32,8 +40,8 @@ async function run() {
     const bannerCollection = database.collection("banner");
     const testCollection = database.collection("test");
     const appointmentCollection = database.collection("appointment");
-    const cancelAppointmentCollection =
-      database.collection("cancelAppointment");
+    const cancelAppointmentCollection = database.collection("cancelAppointment");
+    const recommendationCollection = database.collection("recommendation");
 
     // middleware for verify token
     const verifyToken = (req, res, next) => {
@@ -69,6 +77,10 @@ async function run() {
 
       next();
     };
+
+    app.get('/', async (req, res) =>{
+      res.send("hello world")
+    })
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -210,7 +222,7 @@ async function run() {
       const { currentPage = 1, filter } = req.query;
       const pageSize = 6;
       const totalData = (currentPage - 1) * pageSize;
-      const currentDate = new Date().getTime();
+      const currentDate = new Date().setHours(0,0,0,0).getTime();
 
       try {
         const total = await testCollection.countDocuments();
@@ -569,6 +581,32 @@ async function run() {
       res.send(data)
     })
 
+    app.patch('/update-profile', verifyToken, async (req, res) => {
+      const {email} = req?.decoded
+      console.log(email)
+      const {name, avatar, district, upozilla} = req.body
+      console.log(name, avatar, district, upozilla)
+      const result = await userCollection.updateOne({email}, {$set: {name, avatar, district, upozilla}})
+      console.log(result)
+      res.send(result)
+    })
+
+    app.post('/recommendation', verifyToken, verifyAdmin, async (req, res) => {
+      const data = req.body
+      const result = await recommendationCollection.insertOne(data);
+      res.send(result)
+    })
+
+    app.get('/recommendation', async (req, res) => {
+      const data = await recommendationCollection.find({}).toArray()
+      res.send(data)
+    })
+
+    app.delete('/recommendation/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const {id} = req.params
+      const result = await recommendationCollection.deleteOne({_id: new ObjectId(id)})
+      res.send(result)
+    })
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // await client.db("admin").command({ ping: 1 });

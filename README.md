@@ -12,3 +12,9 @@ npm install
 
 # Start the development server
 node index.js
+
+enviroment variables firebase, mongodb and stripe
+secret_token =
+mongodb_user =
+mongodb pass =
+stripe_secret =

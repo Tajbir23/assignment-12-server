@@ -225,7 +225,6 @@ async function run() {
       const currentDate = new Date().getTime();
 
       try {
-        const total = await testCollection.countDocuments();
 
         // Construct the filter for the date
         let query = { date: { $gte: currentDate } };
@@ -235,6 +234,8 @@ async function run() {
             query.date.$eq = filterDate;
           }
         }
+
+        const total = await testCollection.countDocuments(query);
 
         const data = await testCollection
           .find(query)

@@ -11,7 +11,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://assignment12.tajbirideas.com"
+      "https://assignment12.tajbirideas.com",
+      "https://health-dx.web.app"
     ]
   })
 );
